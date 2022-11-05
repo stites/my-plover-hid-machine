@@ -85,8 +85,8 @@ class HidMachine(ThreadedStenotypeBase):
     def run(self):
         self._ready()
         keystate = BitString(N_LEVERS)
-        wpm = 500 # even though these are chords, assume we go character by character for HID protocol
-        sec_per_word = 1 / (wpm / 60) # ie: 120 ms
+        wpm = 800 # even though these are chords, assume we go character by character for HID protocol
+        sec_per_word = 1 / (wpm / 60) # ie: 75 ms
         debouncer = None
 
         def send_to_plover():
