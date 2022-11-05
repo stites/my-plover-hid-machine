@@ -18,6 +18,7 @@ import hid
 import platform
 from threading import Timer
 
+from plover.system import english_stenotype
 
 # This is a hack to not open the hid device in exclusive mode on
 # darwin, if the version of hidapi installed is current enough
@@ -43,6 +44,11 @@ SIMPLE_REPORT_LEN: int = N_LEVERS // 8
 class InvalidReport(Exception):
     pass
 
+# let the insanity begin!
+MY_ACTIONS = ("-!", "-@", "-$", "-%", "-&", "-+", "-=", "-|")
+
+english_stenotype.KEYS = (*english_stenotype.KEYS, *MY_ACTIONS)
+
 STENO_KEY_CHART = ("S-", "T-", "K-", "P-", "W-", "H-",
                    "R-", "A-", "O-", "*", "-E", "-U",
                    "-F", "-R", "-P", "-B", "-L", "-G",
@@ -54,6 +60,7 @@ STENO_KEY_CHART = ("S-", "T-", "K-", "P-", "W-", "H-",
                    "X25", "X26", "X27", "X28", "X29", "X30",
                    "X31", "X32", "X33", "X34", "X35", "X36",
                    "X37", "X38", "X39", "X40", "X41")
+
 
 class HidMachine(ThreadedStenotypeBase):
     KEYS_LAYOUT: str = '''
@@ -67,10 +74,12 @@ class HidMachine(ThreadedStenotypeBase):
      X31 X32 X33 X34 X35 X36 X37 X38 X39 X40
      X41
     '''
+
     def __init__(self, params):
         super().__init__()
         self._params = params
         self._hid = None
+
 
     def _parse(self, report):
         # The first byte is the report id, and due to idiosynchrasies
