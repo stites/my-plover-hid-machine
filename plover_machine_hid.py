@@ -16,6 +16,8 @@ from plover import log
 from bitstring import BitString
 import hid
 import platform
+from threading import Timer
+
 
 # This is a hack to not open the hid device in exclusive mode on
 # darwin, if the version of hidapi installed is current enough
@@ -53,7 +55,6 @@ STENO_KEY_CHART = ("S-", "T-", "K-", "P-", "W-", "H-",
                    "X31", "X32", "X33", "X34", "X35", "X36",
                    "X37", "X38", "X39", "X40", "X41")
 
-print('steno key chart', len(STENO_KEY_CHART))
 class HidMachine(ThreadedStenotypeBase):
     KEYS_LAYOUT: str = '''
         #  #  #  #  #  #  #  #  #  #
@@ -84,6 +85,20 @@ class HidMachine(ThreadedStenotypeBase):
     def run(self):
         self._ready()
         keystate = BitString(N_LEVERS)
+        wpm = 500 # even though these are chords, assume we go character by character for HID protocol
+        sec_per_word = 1 / (wpm / 60) # ie: 120 ms
+        debouncer = None
+
+        def send_to_plover():
+            nonlocal keystate, debouncer
+            steno_actions = self.keymap.keys_to_actions(
+                [STENO_KEY_CHART[i] for (i, x) in enumerate(keystate) if x]
+            )
+            if steno_actions:
+                self._notify(steno_actions)
+            keystate = BitString(N_LEVERS)
+            debouncer = None
+
         while not self.finished.wait(0):
             try:
                 report = self._hid.read(65536, timeout=1000)
@@ -96,14 +111,11 @@ class HidMachine(ThreadedStenotypeBase):
                 report = self._parse(report)
             except InvalidReport:
                 continue
+
             keystate |= report
             if not report:
-                steno_actions = self.keymap.keys_to_actions(
-                    [STENO_KEY_CHART[i] for (i, x) in enumerate(keystate) if x]
-                )
-                if steno_actions:
-                    self._notify(steno_actions)
-                keystate = BitString(N_LEVERS)
+                debouncer = Timer(sec_per_word, send_to_plover)
+                debouncer.start()
 
     def start_capture(self):
         self.finished.clear()
@@ -137,3 +149,6 @@ class HidMachine(ThreadedStenotypeBase):
     @classmethod
     def get_option_info(cls):
         return {}
+
+
+print("Initialized Plover-HID Machine")
