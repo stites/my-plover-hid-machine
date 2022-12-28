@@ -13,7 +13,7 @@ which are called X1-X26.
 from plover.machine.base import ThreadedStenotypeBase
 from plover import log
 
-from bitstring import BitString
+from bitstring import Bits
 import hid
 import platform
 from threading import Timer
@@ -87,14 +87,14 @@ class HidMachine(ThreadedStenotypeBase):
         # map the report id to the contents in a good way, so we force
         # compliant devices to always use a report id of 0x50 ('P').
         if len(report) > SIMPLE_REPORT_LEN and report[0] == 0x50:
-            return BitString(report[1:SIMPLE_REPORT_LEN+1])
+            return Bits(report[1:SIMPLE_REPORT_LEN+1])
         else:
             raise InvalidReport()
 
     def run(self):
         global MS_DEBOUNCE
         self._ready()
-        keystate = BitString(N_LEVERS)
+        keystate = Bits(N_LEVERS)
 
         # NOTE: Here I use a WPM upper bound to compute a debounce. I find that machine-level precision
         # of keystrokes is unforgiving for a beginner, so I compute an appropriate debounce based on an upper bound of
@@ -131,7 +131,7 @@ class HidMachine(ThreadedStenotypeBase):
             )
             if steno_actions:
                 self._notify(steno_actions)
-            keystate = BitString(N_LEVERS)
+            keystate = Bits(N_LEVERS)
             debouncer = None
 
         while not self.finished.wait(0):
