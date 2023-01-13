@@ -92,10 +92,36 @@ class HidMachine(ThreadedStenotypeBase):
             raise InvalidReport()
 
     def run(self):
+        global MS_DEBOUNCE
         self._ready()
         keystate = BitString(N_LEVERS)
-        wpm = 800 # even though these are chords, assume we go character by character for HID protocol
-        sec_per_word = 1 / (wpm / 60) # ie: 75 ms
+
+        # NOTE: Here I use a WPM upper bound to compute a debounce. I find that machine-level precision
+        # of keystrokes is unforgiving for a beginner, so I compute an appropriate debounce based on an upper bound of
+        # how much of a beginner I am. <X> WPM means that I expect not to hit a speed of <X> between strokes -- this is
+        # a bound computed between strokes and is only an approximation because there is a mismatch between
+        # "strokes-per-minute" and "words-per-minute". Assuming I will not hit 800wpm as a beginner fails to work in the
+        # typey-typey one-sylablle multi-stroke lesson, where a 2000 WPM bound seems more natural.
+        #
+        # Everyone else uses machine precision, so maybe I'm just a clumsy typer -- but as my
+        # debounce level is going down, I suspect that this is actually a helpful feature and not a hurtful one.
+        #
+        # On the whole, WPM is a silly metric (how long is a word?) but corresponds closely to "strokes-per-minute" and
+        # it's the most common metric, so you can get a better sense of what this threshold means ("at every moment you
+        # never pass <X> WPM").
+        #
+        # On tuning this number:
+        # - if you feel your chords are getting split up, at no fault to you, lower your WPM bound (increase the debounce)
+        # - if you feel two chords are "clobbering" into one chord, increase your WPM bound (lower the debounce)
+        #
+        # Grainular notes:
+        # - 800wpm (75ms) works to get from 0-15 WPM on one-syllable words (measured in typey-typey lessons)
+        # - 2000wpm (30ms -- current) seems to be important for the one-syllable multi-stroke words (untested on single strokes)
+        wpm = 2000
+        sec_per_word = 1 / (wpm / 60) # ie: 30 ms
+        print(f"[hid-machine] debounce upper-bound:\t{wpm} wpm")
+        print(f"[hid-machine] debounce debounce:\t{sec_per_word} s/word")
+        print(f"[hid-machine] computed debounce:\t{sec_per_word*1000} ms/word")
         debouncer = None
 
         def send_to_plover():
